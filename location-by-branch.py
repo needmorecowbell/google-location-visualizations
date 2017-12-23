@@ -1,9 +1,6 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime as dt
-import json
-import time
+import json, time, pyglet
 
 class LocationBrancher():
     """docstring for LocationBrancher."""
@@ -11,17 +8,77 @@ class LocationBrancher():
     df_gps= None
     date_range=None
 
+    window= None
+    label = None
+    locations = []
+
+    fps_display= pyglet.clock.ClockDisplay()
 
     def __init__(self):
+        self.window= pyglet.window.Window(visible=False)
+
+        self.label = pyglet.text.Label('Location Brancher',
+                                    font_size=42,
+                                    x=self.window.width//2 , y=self.window.height//2,
+                                    anchor_x='center', anchor_y='center')
+
+        self.on_draw = self.window.event(self.on_draw) #instead of decorator
+
+        print("Loading History....")
         self.__loadHistory()
+        print("Converting Data...")
         self.__convertData()
 
-        for x in range(0,len(self.df_gps['datetime'].keys() ) ):
-            if(-1 != int(self.df_gps['alt'][x]) ):
-                print("Alt: "+str(self.df_gps['alt'][x]))
+
+
+        print("Visualizing...")
+        self._fillLocationStack()
+        self.window.set_visible()
+
+        pyglet.app.run()
+
+
+
+    def _fillLocationStack(self):
+
+        for x in range(0,len(self.df_gps['datetime'].keys() ) ): # for every element in df_gps...
+            if(-1 != int(self.df_gps['alt'][x]) ): #if we didn't set the value to -1 (meaning there is no altitude data for that point)
+
                 print("Location: "+str(self.df_gps['lat'][x])+", "+str(self.df_gps['lon'][x]))
+                print("Alt: "+str(self.df_gps['alt'][x]))
                 print("Time: "+str(str(self.df_gps['datetime'][x])))
                 print("")
+
+                alt= self.df_gps['alt'][x]
+                lat = self.df_gps['lat'][x]
+                lon = self.df_gps['lon'][x]
+                timestamp = self.df_gps['datetime'][x]
+
+
+                self.locations.append({"alt":alt,"lat":lat,"lon":lon,"time:":timestamp}) # stack the dict on to the top
+
+
+
+    def _loadPoint(self):
+        location = self.locations.pop()
+        if location is not None:
+            self.label = pyglet.text.Label("Alt: "+str(location['alt'])+"    Lat: "+str(location['lat'])+"    Lon: "+str(location['lon']),
+                                        font_size=16,
+                                        x= self.window.height//2 , y=self.window.height//2,
+                                        anchor_x='center', anchor_y='center')
+        else:
+            print("No more Points")
+            return -1
+
+    def _reloadDisplay(self):
+        self.window.clear()
+        self.label.draw()
+        self.fps_display.draw()
+
+
+    def on_draw(self):
+        self._reloadDisplay()
+        self._loadPoint()
 
     def __loadHistory(self):
         # load the full location history json file downloaded from google
