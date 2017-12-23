@@ -46,7 +46,7 @@ class LocationBrancher():
 
 
     def _fillLocationStack(self):
-        limit= int(len(self.df_gps['datetime'].keys() ) // 1000) # number of points to acquire (1/4 total)
+        limit= int(len(self.df_gps['datetime'].keys() ) // 1) # number of points to acquire (1/4 total)
         for x in range(0, limit): # for every element in df_gps...
             if(-1 != int(self.df_gps['alt'][x]) ): #if we didn't set the value to -1 (meaning there is no altitude data for that point)
 
@@ -96,7 +96,7 @@ class LocationBrancher():
 
     def __loadHistory(self):
         # load the full location history json file downloaded from google
-        self.df_gps = pd.read_json('data/location_history.json')
+        self.df_gps = pd.read_json('data/location_history.sample.json')
         print("Rows of Data: "+str(len(self.df_gps)))
 
     def __fillAltitude(self, loc):
