@@ -1,6 +1,8 @@
 import pandas as pd
 from datetime import datetime as dt
 import json, time, pyglet, sys
+import threading
+
 
 class LocationBrancher():
     """docstring for LocationBrancher."""
@@ -8,7 +10,8 @@ class LocationBrancher():
     df_gps= None
     date_range=None
     locations = []
-
+    currentTask=0
+	
     # GUI Components
     window_size= [1000,800]
     window= None
@@ -43,25 +46,40 @@ class LocationBrancher():
 
         pyglet.app.run()
 
-
-
-    def _fillLocationStack(self):
-        limit= int(len(self.df_gps['datetime'].keys() ) // 1) # number of points to acquire (1/4 total)
-        for x in range(0, limit): # for every element in df_gps...
+    def _locationWorker(self, lowLim, maxLim):
+        for x in range(lowLim, maxLim): # for every element in df_gps...
             if(-1 != int(self.df_gps['alt'][x]) ): #if we didn't set the value to -1 (meaning there is no altitude data for that point)
 
-                print("Location: "+str(self.df_gps['lat'][x])+", "+str(self.df_gps['lon'][x]))
-                print("Alt: "+str(self.df_gps['alt'][x]))
-                print("Time: "+str(str(self.df_gps['datetime'][x])))
-                print("")
+                #print("Location: "+str(self.df_gps['lat'][x])+", "+str(self.df_gps['lon'][x]))
+                #print("Alt: "+str(self.df_gps['alt'][x]))
+                #print("Time: "+str(str(self.df_gps['datetime'][x])))
+                #print("")
 
                 alt= self.df_gps['alt'][x]
                 lat = self.df_gps['lat'][x]
                 lon = self.df_gps['lon'][x]
                 timestamp = self.df_gps['datetime'][x]
                 self.locations.append({"alt":alt,"lat":lat,"lon":lon,"time":timestamp}) # stack the dict on to the top
+                self.currentTask+=1
+                #percentage= (self.currentTask / len(self.df_gps['datetime'].keys()) ) * 100
+                #print("Tasks Complete: "+str(self.currentTask)+'/'+str(len(self.df_gps['datetime'].keys())))
 
 
+    def _fillLocationStack(self):
+        limit= int(len(self.df_gps['datetime'].keys() ) // 1) # number of points to acquire (1/4 total)
+        workerNum= 30
+        tasksPerWorker = limit // workerNum
+
+        threads = []
+        lowIndex= 0
+        for i in range(workerNum):
+            print("Worker #"+str(i))
+            print("lowIndex:"+str(lowIndex)+"\thighIndex:"+str(lowIndex+tasksPerWorker))
+            time.sleep(3)
+            t = threading.Thread(target=self._locationWorker, args=(lowIndex, lowIndex+tasksPerWorker))
+            threads.append(t)
+            lowIndex+=tasksPerWorker
+            t.start()
 
     def _loadPoint(self):
         if(len(self.locations)>0):
@@ -96,7 +114,7 @@ class LocationBrancher():
 
     def __loadHistory(self):
         # load the full location history json file downloaded from google
-        self.df_gps = pd.read_json('data/location_history.sample.json')
+        self.df_gps = pd.read_json('data/location_history.json')
         print("Rows of Data: "+str(len(self.df_gps)))
 
     def __fillAltitude(self, loc):
